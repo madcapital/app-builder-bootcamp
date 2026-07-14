@@ -11,4 +11,4 @@ This repository documents my journey from program manager to AI-native software 
 - Build AI applications
 - Deploy real software
 
-Started: July 2026
+Started: July 2026# app-builder-bootcamp
