@@ -1,12 +1,25 @@
-from app.llm import ask_llm
 from fastapi import FastAPI
 from pydantic import BaseModel
+
+import app.llm as llm
+
 
 app = FastAPI()
 
 
 class ChatRequest(BaseModel):
     message: str
+
+
+conversation = [
+    {
+        "role": "system",
+        "content": (
+            "You are a helpful assistant. "
+            "Answer clearly and concisely."
+        ),
+    }
+]
 
 
 @app.get("/")
@@ -18,7 +31,21 @@ def read_root():
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    answer = ask_llm(request.message)
+    conversation.append(
+        {
+            "role": "user",
+            "content": request.message,
+        }
+    )
+
+    answer = llm.ask_llm(conversation)
+
+    conversation.append(
+        {
+            "role": "assistant",
+            "content": answer,
+        }
+    )
 
     return {
         "response": answer

@@ -3,6 +3,8 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from app.logger import log_llm_request
+
 
 load_dotenv()
 
@@ -21,23 +23,22 @@ client = OpenAI(
 )
 
 
-def ask_llm(message: str) -> str:
+def ask_llm(messages: list[dict[str, str]]) -> str:
     response = client.chat.completions.create(
         model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a helpful assistant. "
-                    "Answer clearly and concisely."
-                ),
-            },
-            {
-                "role": "user",
-                "content": message,
-            },
-        ],
+        messages=messages,
     )
+
+    usage = response.usage
+
+    if usage is not None:
+        log_llm_request(
+            model=response.model,
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+            cost=getattr(usage, "cost", None),
+        )
 
     answer = response.choices[0].message.content
 
