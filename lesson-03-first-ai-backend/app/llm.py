@@ -1,4 +1,5 @@
 import os
+from collections.abc import Generator
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -46,3 +47,40 @@ def ask_llm(messages: list[dict[str, str]]) -> str:
         raise RuntimeError("The model returned no text response.")
 
     return answer
+
+
+def stream_llm(
+    messages: list[dict[str, str]],
+) -> Generator[str, None, None]:
+    stream = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        stream=True,
+    )
+
+    actual_model = model
+    usage = None
+
+    for chunk in stream:
+        if chunk.model:
+            actual_model = chunk.model
+
+        if chunk.usage is not None:
+            usage = chunk.usage
+
+        if not chunk.choices:
+            continue
+
+        content = chunk.choices[0].delta.content
+
+        if content:
+            yield content
+
+    if usage is not None:
+        log_llm_request(
+            model=actual_model,
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+            cost=getattr(usage, "cost", None),
+        )
