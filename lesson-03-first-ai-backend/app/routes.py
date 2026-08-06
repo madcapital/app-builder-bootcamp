@@ -2,17 +2,13 @@ from collections.abc import Generator
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 
-import app.conversation as conversation
 import app.llm as llm
+from app.conversation import conversation_manager
+from app.models import ChatRequest, ChatResponse
 
 
 router = APIRouter()
-
-
-class ChatRequest(BaseModel):
-    message: str
 
 
 @router.get("/")
@@ -22,35 +18,37 @@ def read_root():
     }
 
 
-@router.post("/chat")
+@router.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
-    conversation.add_user_message(request.message)
+    conversation_manager.add_user_message(request.message)
 
     answer = llm.ask_llm(
-        conversation.get_conversation()
+        conversation_manager.get_messages()
     )
 
-    conversation.add_assistant_message(answer)
+    conversation_manager.add_assistant_message(answer)
 
-    return {
-        "response": answer
-    }
+    return ChatResponse(
+        response=answer
+    )
 
 
 @router.post("/chat/stream")
 def chat_stream(request: ChatRequest):
-    conversation.add_user_message(request.message)
+    conversation_manager.add_user_message(request.message)
 
     def generate() -> Generator[str, None, None]:
         complete_answer = ""
 
         for chunk in llm.stream_llm(
-            conversation.get_conversation()
+            conversation_manager.get_messages()
         ):
             complete_answer += chunk
             yield chunk
 
-        conversation.add_assistant_message(complete_answer)
+        conversation_manager.add_assistant_message(
+            complete_answer
+        )
 
     return StreamingResponse(
         generate(),
